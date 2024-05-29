@@ -1,20 +1,6 @@
-const data = {
-    "name": "Root",
-    "info": "This is the root node",
-    "children": [
-        { "name": "Child 1", "info": "This is child 1" },
-        { "name": "Child 2", "info": "This is child 2" },
-        { "name": "Child 3", "info": "This is child 3" },
-        { "name": "Child 4", "info": "This is child 4" },
-        { "name": "Child 5", "info": "This is child 5" },
-        { "name": "Child 6", "info": "This is child 6" },
-        { "name": "Child 7", "info": "This is child 7" }
-    ]
-};
-
 const width = 960;
 const height = 600;
-const radius = 100;
+const radius = 200;
 
 const svg = d3.select("svg")
     .attr("width", width)
@@ -35,59 +21,68 @@ const tooltip = d3.select("body").append("div")
 const g = svg.append("g")
     .attr("transform", `translate(${width / 2},${height / 2})`);
 
-const root = d3.hierarchy(data);
+d3.csv("flare.csv").then(data => {
+    // Extract categories from data
+    const categories = Array.from(new Set(data.map(d => d.id.split('.')[1])));
 
-const nodes = root.descendants();
-const links = root.links();
+    // Create root node
+    const root = { name: "flare", children: categories.map(c => ({ name: c })) };
 
-const angle = 2 * Math.PI / (nodes.length - 1);
+    // Create hierarchical structure
+    const rootHierarchy = d3.hierarchy(root);
 
-nodes.forEach((node, i) => {
-    if (i === 0) {
-        node.x = 0;
-        node.y = 0;
-    } else {
-        node.x = radius * Math.cos((i - 1) * angle);
-        node.y = radius * Math.sin((i - 1) * angle);
-    }
-});
+    const nodes = rootHierarchy.descendants();
+    const links = rootHierarchy.links();
 
-const link = g.selectAll(".link")
-    .data(links)
-    .enter().append("line")
-    .attr("class", "link")
-    .attr("x1", d => d.source.x)
-    .attr("y1", d => d.source.y)
-    .attr("x2", d => d.target.x)
-    .attr("y2", d => d.target.y)
-    .attr("stroke", "#87CEEB")
-    .attr("stroke-width", 1.5);
+    const angle = 2 * Math.PI / (nodes.length - 1);
 
-const node = g.selectAll(".node")
-    .data(nodes)
-    .enter().append("g")
-    .attr("class", "node")
-    .attr("transform", d => `translate(${d.x},${d.y})`)
-    .on("mouseover", function(event, d) {
-        tooltip.style("visibility", "visible")
-            .text(d.data.name + ": " + d.data.info);
-    })
-    .on("mousemove", function(event) {
-        tooltip.style("top", (event.pageY - 10) + "px")
-            .style("left", (event.pageX + 10) + "px");
-    })
-    .on("mouseout", function() {
-        tooltip.style("visibility", "hidden");
+    nodes.forEach((node, i) => {
+        if (i === 0) {
+            node.x = 0;
+            node.y = 0;
+        } else {
+            node.x = radius * Math.cos((i - 1) * angle);
+            node.y = radius * Math.sin((i - 1) * angle);
+        }
     });
 
-node.append("circle")
-    .attr("r", d => d.children ? 5 : 10)
-    .attr("fill", "#0000FF") // Color azul para los círculos
-    .attr("stroke", "#fff")
-    .attr("stroke-width", 1.5);
+    const link = g.selectAll(".link")
+        .data(links)
+        .enter().append("line")
+        .attr("class", "link")
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y)
+        .attr("stroke", "#87CEEB")
+        .attr("stroke-width", 1.5);
 
-node.append("text")
-    .attr("dy", 3)
-    .attr("x", d => d.children ? -8 : 10)
-    .style("text-anchor", d => d.children ? "end" : "start")
-    .text(d => d.data.name);
+    const node = g.selectAll(".node")
+        .data(nodes)
+        .enter().append("g")
+        .attr("class", "node")
+        .attr("transform", d => `translate(${d.x},${d.y})`)
+        .on("mouseover", function(event, d) {
+            tooltip.style("visibility", "visible")
+                .text(d.data.name);
+        })
+        .on("mousemove", function(event) {
+            tooltip.style("top", (event.pageY - 10) + "px")
+                .style("left", (event.pageX + 10) + "px");
+        })
+        .on("mouseout", function() {
+            tooltip.style("visibility", "hidden");
+        });
+
+    node.append("circle")
+        .attr("r", 10)
+        .attr("fill", d => d.depth === 0 ? "#0000FF" : "#FF0000") // Azul para el root y rojo para los hijos
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 1.5);
+
+    node.append("text")
+        .attr("dy", 3)
+        .attr("x", d => d.depth === 0 ? -8 : 10)
+        .style("text-anchor", d => d.depth === 0 ? "end" : "start")
+        .text(d => d.data.name);
+});
